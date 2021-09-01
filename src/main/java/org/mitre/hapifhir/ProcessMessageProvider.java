@@ -8,7 +8,8 @@ import ca.uhn.fhir.rest.annotation.ResourceParam;
 
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
-import java.util.function.BiFunction;
+import java.util.function.Function;
+import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 
 import org.apache.http.client.ClientProtocolException;
@@ -23,14 +24,13 @@ import org.hl7.fhir.r4.model.OperationOutcome;
 import org.hl7.fhir.r4.model.Resource;
 import org.hl7.fhir.r4.model.ResourceType;
 
-
 public class ProcessMessageProvider {
 
   private FhirContext fhirContext;
-  private BiFunction<Bundle, MessageHeader, Bundle> action;
+  private Function<MessageContext, Bundle> action;
   
-  public ProcessMessageProvider(FhirContext fhirContext, 
-      BiFunction<Bundle, MessageHeader, Bundle> action) {
+  public ProcessMessageProvider(FhirContext fhirContext,
+      Function<MessageContext, Bundle> action) {
     this.fhirContext = fhirContext;
     this.action = action;
   }
@@ -90,6 +90,7 @@ public class ProcessMessageProvider {
       @OptionalParam(name = "async") String async,
       @OptionalParam(name = "response-url") String responseUrl,
       @ResourceParam Bundle bundleR4,
+      HttpServletRequest theServletRequest,
       HttpServletResponse theServletResponse
   ) {
     IParser parser = fhirContext.newJsonParser();
@@ -101,6 +102,10 @@ public class ProcessMessageProvider {
     }
 
     MessageHeader msgHead = (MessageHeader) bundleR4.getEntryFirstRep().getResource();
+    MessageContext messageContext = new MessageContext();
+    messageContext.bundle = bundleR4;
+    messageContext.messageHeader = msgHead;
+    messageContext.request = theServletRequest;
 
     if (async != null && async.equals("true")) {
       // asynchronous
@@ -112,7 +117,7 @@ public class ProcessMessageProvider {
       }
       // do any async operations in the new thread
       Thread newThread = new Thread(() -> {
-        Bundle response = action.apply(bundleR4, msgHead);
+        Bundle response = action.apply(messageContext);
         String bundleString = parser.encodeResourceToString(response);
         makePost(asyncResponseUrl, bundleString);
       });
@@ -125,7 +130,7 @@ public class ProcessMessageProvider {
       }
     } else {
       // synchronous
-      Bundle response = action.apply(bundleR4, msgHead);
+      Bundle response = action.apply(messageContext);
       respondWithResource(response, theServletResponse, parser);
     }
   }
