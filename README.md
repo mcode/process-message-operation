@@ -3,8 +3,7 @@
 This project is a library to add the $process-message operation to HAPI-based FHIR servers.
 Due to the many different ways HAPI servers can be setup, there is some configuration required.
 
-
-# Installation
+## Installation
 
 This project can be added to an existing Maven-based project, add this dependency to `pom.xml`:
 
@@ -18,36 +17,31 @@ This project can be added to an existing Maven-based project, add this dependenc
 
 Or for a Gradle-based project, add this to `build.gradle`:
 
-```
+```gradle
 compile 'org.mitre.hapifhir:process-message-operation:0.0.1'
-
 ```
 
+## Usage
 
-# Usage
-
-This library provides only the skeleton of an operation to register on the HAPI, along with some basic minimal validation. The actual action taken when the $process-message operation is called is left up to the user to implement. This implementation should passed into the constuctor of the ProcessMessageProvider as a function that takes in the request Bundle and MessageHeader and returns the response Bundle (specifically, a BiFunction<Bundle, MessageHeader, Bundle>).
-
+This library provides only the skeleton of an operation to register on the HAPI, along with some basic minimal validation. The actual action taken when the $process-message operation is called is left up to the user to implement. This implementation should passed into the constuctor of the ProcessMessageProvider as a function that takes in the request Bundle and MessageHeader and returns the response Bundle (specifically, a `Function<MessageContext, Bundle>`).
 
 For example, using a JPA Starter HAPI FHIR Server:
 
-
 ```java
-
 import org.mitre.hapifhir.ProcessMessageProvider;
 
 ...
 
 public class JpaRestfulServer extends RestfulServer {
 
-  private static Bundle processMessage(Bundle reqBundle, MessageHeader reqHeader) {
+  private static Bundle processMessage(MessageContext messageContext) {
     // do the requested action, and produce a response bundle
     // for example, save the MessageHeader to the FHIR server
     DaoRegistry daoRegistry = appCtx.getBean(DaoRegistry.class);
     IFhirResourceDao<Bundle> bundleDao = daoRegistry.getResourceDao(ResourceType.Bundle.name());
     IFhirResourceDao<MessageHeader> messageDao = daoRegistry.getResourceDao(ResourceType.MessageHeader.name());
-    bundleDao.create(reqBundle);
-    messageDao.create(reqHeader);
+    bundleDao.create(messageContext.bundle);
+    messageDao.create(messageContext.messageHeader);
 
     return ...
   }
@@ -60,25 +54,26 @@ public class JpaRestfulServer extends RestfulServer {
     ...
   }
 }
-
-
 ```
 
-
-# Development
+## Development
 
 To install the current working version to your local Maven repo, run
-```
+
+```sh
 ./gradlew publishToMavenLocal
 ```
 
 ### Publishing New Versions
 
 To publish new versions to Maven Central, first update the version in `build.gradle`:
-```
+
+```gradle
 def mavenVersion = '0.0.1'
 ```
+
 Then tag the version as appropriate in GitHub, for example:
+
 ```sh
 git tag v0.0.1
 git push origin v0.0.1
@@ -86,17 +81,19 @@ git push origin v0.0.1
 
 The CI process `deploy.yml` will run to publish the new version.
 
-Coordinate with [@dehall](https://github.com/dehall) (dehall@mitre.org) to ensure the published artifacts are released. 
+Coordinate with [@dehall](https://github.com/dehall) (dehall@mitre.org) to ensure the published artifacts are released.
 
+## License
 
-# License
 Copyright 2021 The MITRE Corporation
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+```text
+http://www.apache.org/licenses/LICENSE-2.0
+```
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
